@@ -134,3 +134,5 @@ class Session:
                     env.close()
             else:
                 self.msrl.eval_environment.close()
+    def get_msrl(self):
+        return self.msrl

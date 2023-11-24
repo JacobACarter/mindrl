@@ -19,6 +19,7 @@ from mindspore.ops import operations as P
 
 from mindspore_rl.agent import trainer
 from mindspore_rl.agent.trainer import Trainer
+import time
 
 
 # pylint: disable=W0212
@@ -49,6 +50,8 @@ class PPOTrainer(Trainer):
 
     @mindspore.jit
     def train_one_episode(self):
+        start_time = time.time()
+        #actors
         """the algorithm in one episode"""
         training_loss = self.zero
         training_reward = self.zero
@@ -75,6 +78,10 @@ class PPOTrainer(Trainer):
         next_state_list = replay_buffer_elements[3]
         miu_list = replay_buffer_elements[4]
         sigma_list = replay_buffer_elements[5]
+        actor_end = time.time()
+        actor_time = (actor_end- start_time)
+        print("S " + str(start_time) + " A " + str(actor_end))
+        print("A: "+ str(actor_time))
 
         training_loss += self.msrl.agent_learn(
             (
@@ -86,6 +93,8 @@ class PPOTrainer(Trainer):
                 sigma_list,
             )
         )
+        learner_time = (time.time()-start_time)
+        print("L: " + str(learner_time))
         return training_loss, training_reward, j
 
     @mindspore.jit

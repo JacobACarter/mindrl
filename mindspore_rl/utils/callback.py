@@ -60,7 +60,7 @@ class Callback:
             params (CallbackParam): Parameters for episode begin.
         '''
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Call after each episode finished.
 
@@ -144,7 +144,7 @@ class CallbackManager(Callback):
         for cb in self._callbacks:
             cb.episode_begin(params)
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Call before each episode end.
 
@@ -152,7 +152,7 @@ class CallbackManager(Callback):
             params (CallbackParam): Parameters for episode end.
         '''
         for cb in self._callbacks:
-            cb.episode_end(params)
+            cb.episode_end(params, ret_array)
 
 
 def _is_tensor(input_):
@@ -183,7 +183,7 @@ class LossCallback(Callback):
             raise ValueError("The arg of 'print_rate' must be int and >= 0, but get ", print_rate)
         self._print_rate = print_rate
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Print loss in the end of episode.
 
@@ -192,7 +192,8 @@ class LossCallback(Callback):
         '''
         losses = params.loss
         rewards = params.total_rewards
-        rewards_out, losses_out = [], []
+        rewards_out, rewards_out_min, rewards_out_max, losses_out = [], [], [], []
+        
 
         if not (self._print_rate != 0 and params.cur_episode % self._print_rate == 0):
             return
@@ -202,8 +203,12 @@ class LossCallback(Callback):
             for reward in rewards:
                 if _is_tensor(reward):
                     rewards_out.append(round(float(np.mean(reward.asnumpy())), 3))
+                    rewards_out_min.append(round(float(np.min(reward.asnumpy())), 3))
+                    rewards_out_max.append(round(float(np.max(reward.asnumpy())), 3))
         if _is_tensor(rewards):
             rewards_out.append(round(float(np.mean(rewards.asnumpy())), 3))
+            rewards_out_min.append(round(float(np.min(rewards.asnumpy())), 3))
+            rewards_out_max.append(round(float(np.max(rewards.asnumpy())), 3))
 
         # 2 Deal with losses for both tuple and single.
         if isinstance(losses, (tuple, list)):
@@ -223,7 +228,10 @@ class LossCallback(Callback):
         # 4 Pirnt the loss and rewards.
         print("Episode {}: loss is {}, rewards is {}".format(params.cur_episode, \
             ', '.join([str(x) for x in losses_out]), ', '.join([str(x) for x in rewards_out])), flush=True)
-
+        ret_array[9] = losses_out[0]
+        ret_array[8] = rewards_out_min[0]
+        ret_array[7] = rewards_out[0]
+        ret_array[6] = rewards_out_max[0]
 
 class TimeCallback(Callback):
     r'''
@@ -265,7 +273,7 @@ class TimeCallback(Callback):
         '''
         self.epoch_time = time.time()
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Print time in the end of episode.
 
@@ -287,6 +295,8 @@ class TimeCallback(Callback):
         if self._print_rate != 0 and params.cur_episode % self._print_rate == 0:
             print("Episode {} has {} steps, cost time: {:5.3f} ms, per step time: {:5.3f} ms" \
                 .format(params.cur_episode, steps, epoch_secends, step_seconds), flush=True)
+        ret_array[1] = epoch_secends
+        ret_array[0] = params.cur_episode+1
 
 
 class CheckpointCallback(Callback):
@@ -324,7 +334,7 @@ class CheckpointCallback(Callback):
         if not os.path.exists(self._save_path):
             os.makedirs(self._save_path)
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Save checkpoint in the end of episode.
 
@@ -391,7 +401,7 @@ class EvaluateCallback(Callback):
         '''
         params.eval_rate = self._eval_rate
 
-    def episode_end(self, params):
+    def episode_end(self, params, ret_array):
         '''
         Run evaluate in the end of episode, and print the rewards.
 

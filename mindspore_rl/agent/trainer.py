@@ -21,7 +21,7 @@ import os
 from mindspore_rl.utils.callback import CallbackParam, CallbackManager, TimeCallback
 import mindspore.nn as nn
 from mindspore.train.serialization import load_checkpoint, load_param_into_net
-
+import numpy as np
 
 INIT = 1
 COLLECT = 2
@@ -102,8 +102,14 @@ class Trainer(nn.Cell):
                 cb_params.total_rewards = rewards
                 cb_params.steps = steps
                 cb_params.others = others
-                callback_list.episode_end(cb_params)
+                csv = np.zeros(10)
+                dur = callback_list.episode_end(cb_params, csv)
+                
                 cb_params.cur_episode = i + 1
+                print(csv)
+                f = open('example.csv', 'ab')
+                np.savetxt(f, [csv], delimiter = ',')
+                f.close()
             callback_list.end(cb_params)
 
     def train_one_episode(self):
